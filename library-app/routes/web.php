@@ -17,8 +17,6 @@ Route::get('/books', [BookController::class, 'index'])
 Route::get('/books/{book}', [BookController::class, 'show']) 
     ->name('books.show'); 
  
-
- 
 Route::middleware('auth')->group(function () { 
  
     Route::get('/books/create', [BookController::class, 'create']) 
@@ -37,7 +35,6 @@ Route::middleware('auth')->group(function () {
         ->name('books.destroy'); 
  
 }); 
-
 
 Route::get('/dashboard', function () {
     return view('dashboard');
