@@ -9,21 +9,7 @@ Route::get('/', function () {
 
 Route::resource('books', BookController::class);
 
-/*
-<?php 
- 
-use Illuminate\Support\Facades\Route; 
-use App\Http\Controllers\BookController; 
- 
-Route::get('/', function () { 
-    return redirect('/books'); 
-}); 
- 
-/* 
-|-------------------------------------------------------------------------- 
-| Public Routes 
-|-------------------------------------------------------------------------- 
-*/ 
+
  
 Route::get('/books', [BookController::class, 'index']) 
     ->name('books.index'); 
@@ -31,11 +17,7 @@ Route::get('/books', [BookController::class, 'index'])
 Route::get('/books/{book}', [BookController::class, 'show']) 
     ->name('books.show'); 
  
-/* 
-|-------------------------------------------------------------------------- 
-| Protected Routes 
-|-------------------------------------------------------------------------- 
-*/ 
+
  
 Route::middleware('auth')->group(function () { 
  
@@ -56,12 +38,10 @@ Route::middleware('auth')->group(function () {
  
 }); 
 
-//require __DIR__.'/auth.php'; 
-
 
 Route::get('/dashboard', function () {
     return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard'); 
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
