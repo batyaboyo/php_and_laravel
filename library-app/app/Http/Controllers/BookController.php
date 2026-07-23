@@ -2,116 +2,117 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Book;
-use App\Models\Author;
-use App\Models\Category;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 
 class BookController extends Controller
 {
     /**
-     * Display a listing of the resource.
+     * Display a paginated list of books.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $books = Book::with(['author', 'category']);
+        $query = Book::query();
 
-        if (request('search')) {
-
-            $books->where('title', 'like', '%' . request('search') . '%');
-
+        if ($request->filled('search')) {
+            $query->where('title', 'like', '%' . $request->input('search') . '%');
         }
 
-        $books = $books->paginate(5)->withQueryString();
+        if ($request->filled('category')) {
+            $query->where('category', 'like', '%' . $request->input('category') . '%');
+        }
+
+        $books = $query->latest()->paginate(10);
 
         return view('books.index', compact('books'));
     }
 
-
     /**
-     * Show the form for creating a new resource.
+     * Show the form for creating a new book.
      */
     public function create()
     {
-        $categories = Category::all();
-        $authors = Author::all();
-        return view("books.create", compact("categories","authors"));
+        return view('books.create');
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created book in storage.
      */
-   public function store(Request $request)
+    public function store(Request $request)
     {
-        $request->validate([
-            'title' => 'required',
-            'isbn' => 'required|unique:books',
-            'published_year' => 'required|integer',
-            'available_copies' => 'required|integer|min:1',
-            'author_id' => 'required|exists:authors,id',
-            'category_id' => 'required|exists:categories,id'
+        $validated = $request->validate([
+            'title'        => ['required', 'string', 'max:255'],
+            'author'       => ['required', 'string', 'max:255'],
+            'isbn'         => ['required', 'string', 'max:255', 'unique:books,isbn'],
+            'category'     => ['nullable', 'string', 'max:255'],
+            'total_copies' => ['required', 'integer', 'min:1'],
+            'cover_image'  => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ]);
 
-        Book::create([
-            'title' => $request->title,
-            'isbn' => $request->isbn,
-            'published_year' => $request->published_year,
-            'available_copies' => $request->available_copies,
-            'author_id' => $request->author_id,
-            'category_id' => $request->category_id,
-        ]);
+        if ($request->hasFile('cover_image')) {
+            $validated['cover_image'] = $request->file('cover_image')->store('covers', 'public');
+        }
 
-        return redirect('/books')->with('success', 'Book added successfully.');
+        $validated['available_copies'] = $validated['total_copies'];
+
+        Book::create($validated);
+
+        return redirect()->route('books.index')->with('success', 'Book created successfully.');
     }
 
     /**
-     * Display the specified resource.
+     * Display details of the specified book.
      */
-    public function show(string $id)
+    public function show(Book $book)
     {
-        //
+        return view('books.show', compact('book'));
     }
 
     /**
-     * Show the form for editing the specified resource.
+     * Show the form for editing the specified book.
      */
     public function edit(Book $book)
     {
-        $authors = Author::all();
-        $categories = Category::all();
-
-        return view('books.edit', compact(
-            'book',
-            'authors',
-            'categories'
-        ));
+        return view('books.edit', compact('book'));
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified book in storage.
      */
     public function update(Request $request, Book $book)
     {
-        $request->validate([
-            'title' => 'required',
-            'isbn' => 'required|unique:books,isbn,' . $book->id,
-            'published_year' => 'required|integer',
-            'available_copies' => 'required|integer|min:1',
-            'author_id' => 'required|exists:authors,id',
-            'category_id' => 'required|exists:categories,id',
+        $validated = $request->validate([
+            'title'        => ['required', 'string', 'max:255'],
+            'author'       => ['required', 'string', 'max:255'],
+            'category'     => ['nullable', 'string', 'max:255'],
+            'total_copies' => ['required', 'integer', 'min:1'],
+            'cover_image'  => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ]);
 
-        $book->update($request->all());
+        if ($request->hasFile('cover_image')) {
+            if ($book->cover_image) {
+                Storage::disk('public')->delete($book->cover_image);
+            }
+            $validated['cover_image'] = $request->file('cover_image')->store('covers', 'public');
+        }
 
-        return redirect('/books')->with('success', 'Book updated successfully.');
+        $book->update($validated);
+
+        return redirect()->route('books.index')->with('success', 'Book updated successfully.');
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified book from storage.
      */
     public function destroy(Book $book)
     {
+        if ($book->cover_image) {
+            Storage::disk('public')->delete($book->cover_image);
+        }
+
         $book->delete();
-        return redirect('/books')->with('success', 'Book deleted successfully.');
+
+        return redirect()->route('books.index')->with('success', 'Book deleted successfully.');
     }
 }

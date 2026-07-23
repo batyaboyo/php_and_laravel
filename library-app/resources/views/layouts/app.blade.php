@@ -1,82 +1,108 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Library Management System</title>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
 
+    <title>{{ config('app.name', 'Library System') }} — Library Management</title>
+
+    <!-- Bootstrap 5 CSS CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
-<body>
+<body class="bg-light d-flex flex-column min-vh-100">
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-    <div class="container">
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark shadow-sm">
+        <div class="container">
+            <a class="navbar-brand fw-bold" href="{{ route('books.index') }}">
+                Library Manager
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" 
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
 
-        <a class="navbar-brand" href="{{ route('books.index') }}">
-            📚 Library Management System
-        </a>
-
-        <div class="ms-auto">
-
-            @guest
-                <a href="{{ route('login') }}" class="btn btn-outline-light me-2">
-                    Login
-                </a>
-
-                <a href="{{ route('register') }}" class="btn btn-success">
-                    Register
-                </a>
-            @endguest
-
-            @auth
-                <div class="dropdown">
-                    <button class="btn btn-outline-light dropdown-toggle"
-                            type="button"
-                            data-bs-toggle="dropdown">
-                        {{ auth()->user()->name }}
-                    </button>
-
-                    <ul class="dropdown-menu dropdown-menu-end">
-
-                        <li>
-                            <a class="dropdown-item" href="{{ route('profile.edit') }}">
-                                Profile
+            <div class="collapse navbar-collapse" id="navbarNav">
+                @auth
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('books.*') ? 'active fw-semibold' : '' }}" 
+                               href="{{ route('books.index') }}">
+                                Books
                             </a>
                         </li>
-
-                        <li><hr class="dropdown-divider"></li>
-
-                        <li>
-                            <form method="POST" action="{{ route('logout') }}">
-                                @csrf
-                                <button type="submit" class="dropdown-item text-danger">
-                                    Logout
-                                </button>
-                            </form>
+                        <li class="nav-item">
+                            <a class="nav-link {{ request()->routeIs('my-books') ? 'active fw-semibold' : '' }}" 
+                               href="{{ route('my-books') }}">
+                                My Books
+                            </a>
                         </li>
-
                     </ul>
-                </div>
-            @endauth
 
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-light btn-sm dropdown-toggle" 
+                                    type="button" id="userDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                                <span>{{ Auth::user()->name }}</span>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown">
+                                <li>
+                                    <a class="dropdown-item" href="{{ route('profile.edit') }}">
+                                        Profile Settings
+                                    </a>
+                                </li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form method="POST" action="{{ route('logout') }}">
+                                        @csrf
+                                        <button type="submit" class="dropdown-item text-danger">
+                                            Log Out
+                                        </button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                @else
+                    <div class="ms-auto d-flex align-items-center gap-2">
+                        <a href="{{ route('login') }}" class="btn btn-outline-light btn-sm">Log In</a>
+                        <a href="{{ route('register') }}" class="btn btn-warning btn-sm fw-semibold">Register</a>
+                    </div>
+                @endauth
+            </div>
         </div>
+    </nav>
 
-    </div>
-</nav>
+    <!-- Main Container -->
+    <main class="container py-4 flex-grow-1">
+        <!-- Flash Alert Messages -->
+        @if (session('success'))
+            <div class="alert alert-success alert-dismissible fade show shadow-sm" role="alert">
+                {{ session('success') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-<div class="container mt-4">
+        @if (session('error'))
+            <div class="alert alert-danger alert-dismissible fade show shadow-sm" role="alert">
+                {{ session('error') }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+        @endif
 
-    @if(session('success'))
-        <div class="alert alert-success">
-            {{ session('success') }}
+        @yield('content')
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-white border-top py-3 text-center text-muted small mt-auto">
+        <div class="container">
+            &copy; {{ date('Y') }} Library Management System. All rights reserved.
         </div>
-    @endif
+    </footer>
 
-    @yield('content')
-
-</div>
-
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-
+    <!-- Bootstrap 5 Bundle JS CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

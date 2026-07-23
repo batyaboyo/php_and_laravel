@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('books', function (Blueprint $table) {
             $table->id();
             $table->string('title');
-            $table->string('isbn')->unique();
-            $table->integer('published_year');
+            $table->string('isbn')->nullable();
+            $table->integer('published_year')->nullable();
             $table->integer('available_copies')->default(1);
-            $table->foreignId('author_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('author_id')->nullable()->constrained()->cascadeOnDelete();
+            $table->foreignId('category_id')->nullable()->constrained()->cascadeOnDelete();
             $table->timestamps();
         });
     }

@@ -8,18 +8,16 @@ class Book extends Model
 {
     protected $fillable = [
         'title',
-        'author_id',
+        'author',
         'isbn',
-        'category_id',
-        'published_year',
+        'category',
+        'total_copies',
         'available_copies',
+        'cover_image',
     ];
 
-    public function author(){
-        return $this->belongsTo(Author::class);
-    }
-
-    public function category(){
-        return $this->belongsTo(Category::class);
+    public function borrowRecords(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(BorrowRecord::class);
     }
 }
