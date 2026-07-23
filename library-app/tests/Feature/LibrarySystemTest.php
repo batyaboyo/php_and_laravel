@@ -33,6 +33,7 @@ it('allows any authenticated user to create, edit, and delete books', function (
     $updateResponse = $this->actingAs($member)->put("/books/{$book->id}", [
         'title'        => 'Updated Title by Member',
         'author'       => 'Jane Doe',
+        'isbn'         => '978-9999999999',
         'category'     => 'Tech',
         'total_copies' => 5,
     ]);
@@ -43,6 +44,32 @@ it('allows any authenticated user to create, edit, and delete books', function (
     $deleteResponse = $this->actingAs($member)->delete("/books/{$book->id}");
     $deleteResponse->assertRedirect('/books');
     $this->assertDatabaseMissing('books', ['id' => $book->id]);
+});
+
+it('recalculates available_copies when total_copies is updated', function () {
+    $member = User::factory()->create(['role' => 'member']);
+    $book = Book::create([
+        'title'            => 'Original Book',
+        'author'           => 'Author',
+        'isbn'             => '978-8888888888',
+        'category'         => 'Tech',
+        'total_copies'     => 3,
+        'available_copies' => 3,
+    ]);
+
+    // Updating total_copies from 3 to 30 with 0 active loans should set available_copies to 30
+    $response = $this->actingAs($member)->put("/books/{$book->id}", [
+        'title'        => 'Original Book',
+        'author'       => 'Author',
+        'isbn'         => '978-8888888888',
+        'category'     => 'Tech',
+        'total_copies' => 30,
+    ]);
+
+    $response->assertRedirect('/books');
+    $book->refresh();
+    expect($book->total_copies)->toBe(30);
+    expect($book->available_copies)->toBe(30);
 });
 
 it('blocks unauthenticated guests from book CRUD actions', function () {
@@ -64,7 +91,7 @@ it('blocks borrowing when no copies are available', function () {
     $response = $this->actingAs($user)->post("/books/{$book->id}/borrow");
 
     $response->assertRedirect();
-    $response->assertSessionHas('error', 'No copies are currently available for this book.');
+    $response->assertSessionHas('error', 'No copies are available for this book.');
 });
 
 it('allows borrowing when copies are available', function () {

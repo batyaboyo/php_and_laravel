@@ -2,103 +2,112 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Member;
+use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class MemberController extends Controller
 {
+    /**
+     * Display a paginated list of library members.
+     */
     public function index()
     {
-        $members = Member::withCount('borrowRecords')->latest()->paginate(10);
+        $members = User::query()
+            ->where('role', 'member')
+            ->withCount(['borrowRecords as active_borrows_count' => function ($query) {
+                $query->whereNull('returned_date');
+            }])
+            ->latest()
+            ->paginate(10);
 
         return view('members.index', compact('members'));
     }
 
-    public function create()
+    /**
+     * Display a specific member's profile and full borrow history.
+     */
+    public function show(User $member)
     {
-        return view('members.create');
-    }
-
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:members,email'],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'membership_date' => ['nullable', 'date'],
-            'status' => ['required', 'in:active,suspended'],
-        ]);
-
-        $data = [
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'status' => $validated['status'],
-        ];
-
-        if ($this->memberHasMembershipDateColumn()) {
-            $data['membership_date'] = $validated['membership_date'] ?? now()->toDateString();
+        if ($member->role !== 'member') {
+            abort(404);
         }
 
-        Member::create($data);
+        $borrowRecords = $member->borrowRecords()
+            ->with('book')
+            ->latest('borrowed_date')
+            ->get();
 
-        return redirect('/members')->with('success', 'Member added successfully.');
+        return view('members.show', compact('member', 'borrowRecords'));
     }
 
-    public function show(Member $member)
+    /**
+     * Show form to edit member details.
+     */
+    public function edit(User $member)
     {
-        $member->load(['borrowRecords' => function ($query) {
-            $query->with('book')->latest('borrowed_date');
-        }]);
+        if ($member->role !== 'member') {
+            abort(404);
+        }
 
-        return view('members.show', compact('member'));
-    }
-
-    public function edit(Member $member)
-    {
         return view('members.edit', compact('member'));
     }
 
-    public function update(Request $request, Member $member)
+    /**
+     * Update member details.
+     */
+    public function update(Request $request, User $member)
     {
+        if ($member->role !== 'member') {
+            abort(404);
+        }
+
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'email', 'max:255', 'unique:members,email,' . $member->id],
-            'phone' => ['nullable', 'string', 'max:255'],
-            'membership_date' => ['nullable', 'date'],
-            'status' => ['required', 'in:active,suspended'],
+            'name'      => ['required', 'string', 'max:255'],
+            'email'     => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($member->id)],
+            'max_books' => ['required', 'integer', 'min:1'],
         ]);
 
-        $data = [
-            'name' => $validated['name'],
-            'email' => $validated['email'],
-            'phone' => $validated['phone'] ?? null,
-            'status' => $validated['status'],
-        ];
+        $member->update($validated);
 
-        if ($this->memberHasMembershipDateColumn()) {
-            $data['membership_date'] = $validated['membership_date'] ?? optional($member->membership_date)->toDateString() ?? now()->toDateString();
-        }
-
-        $member->update($data);
-
-        return redirect('/members')->with('success', 'Member updated successfully.');
+        return redirect()->route('members.index')->with('success', 'Member details updated successfully.');
     }
 
-    protected function memberHasMembershipDateColumn(): bool
+    /**
+     * Suspend a member.
+     */
+    public function suspend(User $member)
     {
-        try {
-            return Schema::hasColumn('members', 'membership_date');
-        } catch (\Throwable $e) {
-            return false;
+        if ($member->role !== 'member') {
+            abort(404);
         }
+
+        // Check if member has unreturned books with an unpaid fine > 0
+        $hasUnreturnedBookWithFine = $member->borrowRecords()
+            ->whereNull('returned_date')
+            ->where('fine', '>', 0)
+            ->exists();
+
+        if ($hasUnreturnedBookWithFine) {
+            return back()->with('error', 'Cannot suspend member: Member has unreturned books with unpaid fines.');
+        }
+
+        $member->update(['membership_status' => 'suspended']);
+
+        return back()->with('success', 'Member account suspended successfully.');
     }
 
-    public function destroy(Member $member)
+    /**
+     * Activate a member.
+     */
+    public function activate(User $member)
     {
-        $member->delete();
+        if ($member->role !== 'member') {
+            abort(404);
+        }
 
-        return redirect('/members')->with('success', 'Member deleted successfully.');
+        $member->update(['membership_status' => 'active']);
+
+        return back()->with('success', 'Member account activated successfully.');
     }
 }

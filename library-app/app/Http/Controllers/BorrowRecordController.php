@@ -15,13 +15,43 @@ class BorrowRecordController extends Controller
      */
     public function store(Request $request, Book $book)
     {
+        $user = Auth::user();
+
+        // 1. available_copies check
         if ($book->available_copies < 1) {
-            return back()->with('error', 'No copies are currently available for this book.');
+            return back()->with('error', 'No copies are available for this book.');
         }
 
+        // 2. Duplicate borrow check
+        $alreadyBorrowed = BorrowRecord::where('book_id', $book->id)
+            ->where('user_id', $user->id)
+            ->whereNull('returned_date')
+            ->exists();
+
+        if ($alreadyBorrowed) {
+            return back()->with('error', 'You already have this book borrowed.');
+        }
+
+        // 3. Membership status check
+        if ($user->membership_status === 'suspended') {
+            return back()->with('error', 'Your membership is suspended. Contact the library.');
+        }
+
+        // 4. Borrow count check (max_books limit)
+        $activeBorrowsCount = $user->borrowRecords()
+            ->whereNull('returned_date')
+            ->count();
+
+        $maxBooks = $user->max_books ?? 3;
+
+        if ($activeBorrowsCount >= $maxBooks) {
+            return back()->with('error', "You have reached your borrowing limit of {$maxBooks} books.");
+        }
+
+        // Create borrow record
         BorrowRecord::create([
             'book_id'       => $book->id,
-            'user_id'       => Auth::id(),
+            'user_id'       => $user->id,
             'borrowed_date' => now()->toDateString(),
             'due_date'      => now()->addDays(14)->toDateString(),
             'fine'          => 0,
@@ -49,11 +79,8 @@ class BorrowRecordController extends Controller
 
         $dueDate  = \Carbon\Carbon::parse($record->due_date)->startOfDay();
         $today    = now()->startOfDay();
-        $daysLate = max(0, $dueDate->diffInDays($today, false) * -1);
-
-        // diffInDays with false preserves sign; negative means today > due_date
-        // Simpler: use ceiling difference
         $daysLate = 0;
+
         if ($today->greaterThan($dueDate)) {
             $daysLate = (int) $dueDate->diffInDays($today);
         }

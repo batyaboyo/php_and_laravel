@@ -11,6 +11,42 @@
         </a>
     </div>
 
+    <!-- Member Membership Status Card -->
+    @auth
+        @php
+            $user = auth()->user();
+            $activeCount = $records->count();
+            $maxLimit = $user->max_books ?? 3;
+            $isSuspended = $user->membership_status === 'suspended';
+        @endphp
+        <div class="card border-0 shadow-sm mb-4 bg-white">
+            <div class="card-body py-3">
+                <div class="row align-items-center text-center text-md-start g-2">
+                    <div class="col-md-3">
+                        <span class="text-muted small d-block">Member Name</span>
+                        <span class="fw-bold text-dark">{{ $user->name }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted small d-block">Membership Number</span>
+                        <span class="fw-bold text-dark">{{ $user->membership_number ?? 'LIB-' . str_pad($user->id, 4, '0', STR_PAD_LEFT) }}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted small d-block">Membership Status</span>
+                        @if ($isSuspended)
+                            <span class="badge bg-danger text-white">Suspended</span>
+                        @else
+                            <span class="badge bg-success text-white">Active</span>
+                        @endif
+                    </div>
+                    <div class="col-md-3">
+                        <span class="text-muted small d-block">Borrowing Capacity</span>
+                        <span class="fw-bold text-dark">{{ $activeCount }} / {{ $maxLimit }} Books Used</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endauth
+
     @if ($records->isEmpty())
         <div class="card border-0 shadow-sm text-center py-5">
             <div class="card-body">

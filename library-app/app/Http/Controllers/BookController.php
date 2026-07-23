@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Book;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 
 class BookController extends Controller
 {
@@ -23,7 +24,7 @@ class BookController extends Controller
             $query->where('category', 'like', '%' . $request->input('category') . '%');
         }
 
-        $books = $query->latest()->paginate(10);
+        $books = $query->latest()->paginate(5);
 
         return view('books.index', compact('books'));
     }
@@ -85,6 +86,7 @@ class BookController extends Controller
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
             'author'       => ['required', 'string', 'max:255'],
+            'isbn'         => ['required', 'string', 'max:255', Rule::unique('books', 'isbn')->ignore($book->id)],
             'category'     => ['nullable', 'string', 'max:255'],
             'total_copies' => ['required', 'integer', 'min:1'],
             'cover_image'  => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
@@ -96,6 +98,10 @@ class BookController extends Controller
             }
             $validated['cover_image'] = $request->file('cover_image')->store('covers', 'public');
         }
+
+        // Recalculate available copies based on currently active (unreturned) loans
+        $activeLoansCount = $book->borrowRecords()->whereNull('returned_date')->count();
+        $validated['available_copies'] = max(0, $validated['total_copies'] - $activeLoansCount);
 
         $book->update($validated);
 
