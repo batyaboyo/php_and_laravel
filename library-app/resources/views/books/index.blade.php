@@ -61,16 +61,16 @@
         <div class="card-body">
             <form action="{{ route('books.index') }}" method="GET" class="row g-3 align-items-end">
                 <div class="col-md-5">
-                    <label class="form-label fw-medium text-secondary small mb-1">Search by Title</label>
+                    <label class="form-label fw-medium text-secondary small mb-1">Search <!--by Title --> /</label>
                     <input type="text" name="search" class="form-control" placeholder="Type book title..." value="{{ request('search') }}">
                 </div>
-                <div class="col-md-4">
+              <!--  <div class="col-md-4">
                     <label class="form-label fw-medium text-secondary small mb-1">Category</label>
                     <input type="text" name="category" class="form-control" placeholder="Filter category..." value="{{ request('category') }}">
-                </div>
-                <div class="col-md-3 d-flex gap-2">
+                </div> -->
+                <div class="col-md-3 d-flex gap-2"> 
                     <button type="submit" class="btn btn-primary w-100 fw-semibold">
-                        Filter
+                        Search <!--Filter -->
                     </button>
                     @if(request()->has('search') || request()->has('category'))
                         <a href="{{ route('books.index') }}" class="btn btn-outline-secondary">
