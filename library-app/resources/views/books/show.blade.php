@@ -66,18 +66,20 @@
                                         </button>
                                     </form>
 
-                                    <a href="{{ route('books.edit', $book) }}" class="btn btn-outline-warning text-dark">
-                                        Edit
-                                    </a>
+                                    @if(auth()->user()->role === 'admin')
+                                        <a href="{{ route('books.edit', $book) }}" class="btn btn-outline-warning text-dark">
+                                            Edit
+                                        </a>
 
-                                    <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline"
-                                        onsubmit="return confirm('Are you sure you want to delete this book?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger">
-                                            Delete
-                                        </button>
-                                    </form>
+                                        <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline"
+                                            onsubmit="return confirm('Are you sure you want to delete this book?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger">
+                                                Delete
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endauth
                             </div>
                         </div>

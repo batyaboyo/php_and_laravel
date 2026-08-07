@@ -35,6 +35,21 @@
                             </button>
                         </form>
                     @endif
+
+                    <form action="{{ route('members.make-admin', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Promote {{ $member->name }} to Admin? They will gain full admin privileges.')">
+                        @csrf
+                        <button type="submit" class="btn btn-outline-primary btn-sm">
+                            Make Admin
+                        </button>
+                    </form>
+
+                    <form action="{{ route('members.destroy', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently remove {{ $member->name }} from the system?')">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-danger btn-sm">
+                            Delete User
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -109,10 +124,10 @@
                                 <td>
                                     @if ($record->fine > 0)
                                         <span class="badge bg-danger text-white">
-                                            ${{ number_format($record->fine, 2) }}
+                                            UGX {{ number_format($record->fine) }}
                                         </span>
                                     @else
-                                        <span class="text-muted small">$0.00</span>
+                                        <span class="text-muted small">UGX 0</span>
                                     @endif
                                 </td>
                             </tr>

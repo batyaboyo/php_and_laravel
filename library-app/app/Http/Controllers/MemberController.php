@@ -8,13 +8,10 @@ use Illuminate\Validation\Rule;
 
 class MemberController extends Controller
 {
-    /**
-     * Display a paginated list of library members.
-     */
+    // Display a paginated list of library members.
     public function index()
     {
         $members = User::query()
-            ->where('role', 'member')
             ->withCount(['borrowRecords as active_borrows_count' => function ($query) {
                 $query->whereNull('returned_date');
             }])
@@ -24,15 +21,9 @@ class MemberController extends Controller
         return view('members.index', compact('members'));
     }
 
-    /**
-     * Display a specific member's profile and full borrow history.
-     */
+    // Display a specific member's profile and full borrow history.
     public function show(User $member)
     {
-        if ($member->role !== 'member') {
-            abort(404);
-        }
-
         $borrowRecords = $member->borrowRecords()
             ->with('book')
             ->latest('borrowed_date')
@@ -41,27 +32,17 @@ class MemberController extends Controller
         return view('members.show', compact('member', 'borrowRecords'));
     }
 
-    /**
-     * Show form to edit member details.
-     */
+    // Show form to edit member details.
+
     public function edit(User $member)
     {
-        if ($member->role !== 'member') {
-            abort(404);
-        }
-
         return view('members.edit', compact('member'));
     }
 
-    /**
-     * Update member details.
-     */
+    // Update member details.
+     
     public function update(Request $request, User $member)
     {
-        if ($member->role !== 'member') {
-            abort(404);
-        }
-
         $validated = $request->validate([
             'name'      => ['required', 'string', 'max:255'],
             'email'     => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($member->id)],
@@ -73,15 +54,10 @@ class MemberController extends Controller
         return redirect()->route('members.index')->with('success', 'Member details updated successfully.');
     }
 
-    /**
-     * Suspend a member.
-     */
+    // Suspend a member.
+    
     public function suspend(User $member)
     {
-        if ($member->role !== 'member') {
-            abort(404);
-        }
-
         // Check if member has unreturned books with an unpaid fine > 0
         $hasUnreturnedBookWithFine = $member->borrowRecords()
             ->whereNull('returned_date')
@@ -97,17 +73,47 @@ class MemberController extends Controller
         return back()->with('success', 'Member account suspended successfully.');
     }
 
-    /**
-     * Activate a member.
-     */
+    // Activate a member.
+     
     public function activate(User $member)
     {
-        if ($member->role !== 'member') {
-            abort(404);
-        }
-
         $member->update(['membership_status' => 'active']);
 
         return back()->with('success', 'Member account activated successfully.');
+    }
+
+    // Promote a member to admin.
+     
+    public function makeAdmin(User $member)
+    {
+        if ($member->role === 'admin') {
+            return back()->with('error', 'This user is already an admin.');
+        }
+
+        $member->update(['role' => 'admin']);
+
+        return back()->with('success', "{$member->name} has been promoted to admin successfully.");
+    }
+
+    // Remove a user/member from the system.
+    public function destroy(User $member)
+    {
+        if ($member->id === auth()->id()) {
+            return back()->with('error', 'You cannot remove your own admin account.');
+        }
+
+        $hasActiveBorrows = $member->borrowRecords()
+            ->whereNull('returned_date')
+            ->exists();
+
+        if ($hasActiveBorrows) {
+            return back()->with('error', 'Cannot remove user: User currently has active borrowed books that must be returned first.');
+        }
+
+        $memberName = $member->name;
+        $member->borrowRecords()->delete();
+        $member->delete();
+
+        return redirect()->route('members.index')->with('success', "User '{$memberName}' has been removed successfully.");
     }
 }

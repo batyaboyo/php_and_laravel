@@ -6,11 +6,11 @@
             <h2 class="h3 fw-bold mb-0 text-dark">Library Books</h2>
             <p class="text-muted small mb-0">Browse, add, and manage books in the catalog</p>
         </div>
-        @auth
+        @if(auth()->check() && auth()->user()->role === 'admin')
             <a href="{{ route('books.create') }}" class="btn btn-primary shadow-sm">
                 Add Book
             </a>
-        @endauth
+        @endif
     </div>
 
     <!-- Member Membership Status Bar -->
@@ -96,7 +96,8 @@
                 <table class="table table-hover align-middle mb-0">
                     <thead class="table-light text-secondary small text-uppercase fw-bold">
                         <tr>
-                            <th class="ps-4">Title</th>
+                            <th class="ps-4" style="width: 70px;">Cover</th>
+                            <th>Title</th>
                             <th>Author</th>
                             <th>Category</th>
                             <th>Copies Available</th>
@@ -109,7 +110,18 @@
                                 $alreadyBorrowed = auth()->check() && in_array($book->id, $borrowedBookIds ?? []);
                             @endphp
                             <tr>
-                                <td class="ps-4 fw-semibold text-dark">
+                                <td class="ps-4 py-2">
+                                    @if($book->cover_image)
+                                        <img src="{{ asset('storage/' . $book->cover_image) }}" alt="{{ $book->title }}" 
+                                             class="rounded border shadow-sm" style="width: 45px; height: 60px; object-fit: cover;">
+                                    @else
+                                        <div class="bg-secondary-subtle text-secondary rounded d-flex align-items-center justify-content-center border" 
+                                             style="width: 45px; height: 60px; font-size: 1.2rem;">
+                                            📖
+                                        </div>
+                                    @endif
+                                </td>
+                                <td class="fw-semibold text-dark">
                                     <a href="{{ route('books.show', $book) }}" class="text-decoration-none text-dark fw-bold">
                                         {{ $book->title }}
                                     </a>
@@ -173,19 +185,21 @@
                                                 @endif
                                             </form>
 
-                                            {{-- Edit Button --}}
-                                            <a href="{{ route('books.edit', $book) }}" class="btn btn-sm btn-outline-warning text-dark">
-                                                Edit
-                                            </a>
+                                            {{-- Edit Button (Admin only) --}}
+                                            @if(auth()->user()->role === 'admin')
+                                                <a href="{{ route('books.edit', $book) }}" class="btn btn-sm btn-outline-warning text-dark">
+                                                    Edit
+                                                </a>
 
-                                            {{-- Delete Button --}}
-                                            <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this book?')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-sm btn-outline-danger">
-                                                    Delete
-                                                </button>
-                                            </form>
+                                                {{-- Delete Button --}}
+                                                <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this book?')">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                        Delete
+                                                    </button>
+                                                </form>
+                                            @endif
                                         @endauth
                                     </div>
                                 </td>

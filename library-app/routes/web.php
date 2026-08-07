@@ -38,6 +38,9 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::put('/members/{member}', [MemberController::class, 'update'])->name('members.update');
     Route::post('/members/{member}/suspend', [MemberController::class, 'suspend'])->name('members.suspend');
     Route::post('/members/{member}/activate', [MemberController::class, 'activate'])->name('members.activate');
+    Route::post('/members/{member}/make-admin', [MemberController::class, 'makeAdmin'])->name('members.make-admin');
+    Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy');
 });
 
 require __DIR__ . '/auth.php';
+ 

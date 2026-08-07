@@ -6,70 +6,73 @@ use App\Models\Book;
 use App\Models\BorrowRecord;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class BorrowRecordController extends Controller
 {
-    /**
-     * Borrow a book.
-     * POST /books/{book}/borrow
-     */
+    // Borrow a book.
+    // POST /books/{book}/borrow
+    
     public function store(Request $request, Book $book)
     {
         $user = Auth::user();
 
-        // 1. available_copies check
-        if ($book->available_copies < 1) {
-            return back()->with('error', 'No copies are available for this book.');
-        }
+        return DB::transaction(function () use ($book, $user) {
+            // Lock book row for update to prevent concurrent over-borrowing
+            $lockedBook = Book::where('id', $book->id)->lockForUpdate()->first();
 
-        // 2. Duplicate borrow check
-        $alreadyBorrowed = BorrowRecord::where('book_id', $book->id)
-            ->where('user_id', $user->id)
-            ->whereNull('returned_date')
-            ->exists();
+            // 1. available_copies check
+            if (! $lockedBook || $lockedBook->available_copies < 1) {
+                return back()->with('error', 'No copies are available for this book.');
+            }
 
-        if ($alreadyBorrowed) {
-            return back()->with('error', 'You already have this book borrowed.');
-        }
+            // 2. Duplicate borrow check
+            $alreadyBorrowed = BorrowRecord::where('book_id', $lockedBook->id)
+                ->where('user_id', $user->id)
+                ->whereNull('returned_date')
+                ->exists();
 
-        // 3. Membership status check
-        if ($user->membership_status === 'suspended') {
-            return back()->with('error', 'Your membership is suspended. Contact the library.');
-        }
+            if ($alreadyBorrowed) {
+                return back()->with('error', 'You already have this book borrowed.');
+            }
 
-        // 4. Borrow count check (max_books limit)
-        $activeBorrowsCount = $user->borrowRecords()
-            ->whereNull('returned_date')
-            ->count();
+            // 3. Membership status check
+            if ($user->membership_status === 'suspended') {
+                return back()->with('error', 'Your membership is suspended. Contact the library.');
+            }
 
-        $maxBooks = $user->max_books ?? 3;
+            // 4. Borrow count check (max_books limit)
+            $activeBorrowsCount = $user->borrowRecords()
+                ->whereNull('returned_date')
+                ->count();
 
-        if ($activeBorrowsCount >= $maxBooks) {
-            return back()->with('error', "You have reached your borrowing limit of {$maxBooks} books.");
-        }
+            $maxBooks = $user->max_books ?? 3;
 
-        // Create borrow record
-        BorrowRecord::create([
-            'book_id'       => $book->id,
-            'user_id'       => $user->id,
-            'borrowed_date' => now()->toDateString(),
-            'due_date'      => now()->addDays(14)->toDateString(),
-            'fine'          => 0,
-        ]);
+            if ($activeBorrowsCount >= $maxBooks) {
+                return back()->with('error', "You have reached your borrowing limit of {$maxBooks} books.");
+            }
 
-        $book->decrement('available_copies');
+            // Create borrow record
+            BorrowRecord::create([
+                'book_id'       => $lockedBook->id,
+                'user_id'       => $user->id,
+                'borrowed_date' => now()->toDateString(),
+                'due_date'      => now()->addDays(14)->toDateString(),
+                'fine'          => 0,
+            ]);
 
-        return back()->with('success', 'Book borrowed successfully. Return it within 14 days.');
+            $lockedBook->decrement('available_copies');
+
+            return back()->with('success', 'Book borrowed successfully. Return it within 14 days.');
+        });
     }
 
-    /**
-     * Return a borrowed book.
-     * POST /borrow-records/{record}/return
-     */
+    // Return a borrowed book.
+    // POST /borrow-records/{record}/return
     public function returnBook(BorrowRecord $record)
     {
-        // Security: only the borrower may return their own record
-        if ($record->user_id !== Auth::id()) {
+        // Security: only the borrower or an admin may return a record
+        if ($record->user_id !== Auth::id() && Auth::user()->role !== 'admin') {
             abort(403, 'You are not authorised to return this borrow record.');
         }
 
@@ -77,34 +80,41 @@ class BorrowRecordController extends Controller
             return back()->with('error', 'This book has already been returned.');
         }
 
-        $dueDate  = \Carbon\Carbon::parse($record->due_date)->startOfDay();
-        $today    = now()->startOfDay();
-        $daysLate = 0;
+        return DB::transaction(function () use ($record) {
+            $lockedRecord = BorrowRecord::where('id', $record->id)->lockForUpdate()->first();
 
-        if ($today->greaterThan($dueDate)) {
-            $daysLate = (int) $dueDate->diffInDays($today);
-        }
+            if (! $lockedRecord || $lockedRecord->returned_date) {
+                return back()->with('error', 'This book has already been returned.');
+            }
 
-        $fine = $daysLate * 500; // 500 per day late
+            $dueDate  = \Carbon\Carbon::parse($lockedRecord->due_date)->startOfDay();
+            $today    = now()->startOfDay();
+            $daysLate = 0;
 
-        $record->update([
-            'returned_date' => now()->toDateString(),
-            'fine'          => $fine,
-        ]);
+            if ($today->greaterThan($dueDate)) {
+                $daysLate = (int) $dueDate->diffInDays($today);
+            }
 
-        $record->book->increment('available_copies');
+            $fine = $daysLate * 500; // 500 per day late
 
-        $message = $daysLate > 0
-            ? "Book returned successfully. Late fine: \${$fine}"
-            : 'Book returned successfully.';
+            $lockedRecord->update([
+                'returned_date' => now()->toDateString(),
+                'fine'          => $fine,
+            ]);
 
-        return back()->with('success', $message);
+            $lockedRecord->book()->lockForUpdate()->first()?->increment('available_copies');
+
+            $message = $daysLate > 0
+                ? "Book returned successfully. Late fine: UGX {$fine}"
+                : 'Book returned successfully.';
+
+            return back()->with('success', $message);
+        });
     }
 
-    /**
-     * Show the current user's active borrows.
-     * GET /my-books
-     */
+    // Show the current user's active borrows.
+    // GET /my-books
+     
     public function myBooks()
     {
         $records = auth()->user()

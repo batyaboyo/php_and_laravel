@@ -9,39 +9,49 @@ use Illuminate\Validation\Rule;
 
 class BookController extends Controller
 {
-    /**
-     * Display a paginated list of books.
-     */
+    // Display a paginated list of books.
+    
     public function index(Request $request)
     {
         $query = Book::query();
 
         if ($request->filled('search')) {
-            $query->where('title', 'like', '%' . $request->input('search') . '%');
+            $search = $request->input('search');
+            $query->where(function ($q) use ($search) {
+                $q->where('title', 'like', "%{$search}%")
+                  ->orWhere('author', 'like', "%{$search}%")
+                  ->orWhere('isbn', 'like', "%{$search}%");
+            });
         }
 
         if ($request->filled('category')) {
             $query->where('category', 'like', '%' . $request->input('category') . '%');
         }
 
-        $books = $query->latest()->paginate(5);
+        $books = $query->latest()->paginate(10);
 
         return view('books.index', compact('books'));
     }
 
-    /**
-     * Show the form for creating a new book.
-     */
+    // Show the form for creating a new book.
+     
     public function create()
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Only admins can add books.');
+        }
+
         return view('books.create');
     }
 
-    /**
-     * Store a newly created book in storage.
-     */
+    // Store a newly created book in storage.
+     
     public function store(Request $request)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Only admins can add books.');
+        }
+
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
             'author'       => ['required', 'string', 'max:255'],
@@ -62,27 +72,32 @@ class BookController extends Controller
         return redirect()->route('books.index')->with('success', 'Book created successfully.');
     }
 
-    /**
-     * Display details of the specified book.
-     */
+    // Display details of the specified book.
+    
     public function show(Book $book)
     {
         return view('books.show', compact('book'));
     }
 
-    /**
-     * Show the form for editing the specified book.
-     */
+    // Show the form for editing the specified book.
+    
     public function edit(Book $book)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Only admins can edit books.');
+        }
+
         return view('books.edit', compact('book'));
     }
 
-    /**
-     * Update the specified book in storage.
-     */
+    // Update the specified book in storage.
+     
     public function update(Request $request, Book $book)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Only admins can update books.');
+        }
+
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
             'author'       => ['required', 'string', 'max:255'],
@@ -108,11 +123,19 @@ class BookController extends Controller
         return redirect()->route('books.index')->with('success', 'Book updated successfully.');
     }
 
-    /**
-     * Remove the specified book from storage.
-     */
+    // Remove the specified book from storage.
+     
     public function destroy(Book $book)
     {
+        if (auth()->user()->role !== 'admin') {
+            abort(403, 'Only admins can delete books.');
+        }
+
+        $activeBorrows = $book->borrowRecords()->whereNull('returned_date')->count();
+        if ($activeBorrows > 0) {
+            return back()->with('error', 'Cannot delete book: This book is currently borrowed by members.');
+        }
+
         if ($book->cover_image) {
             Storage::disk('public')->delete($book->cover_image);
         }

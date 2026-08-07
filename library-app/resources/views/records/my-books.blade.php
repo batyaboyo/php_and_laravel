@@ -94,7 +94,7 @@
                                 <td>
                                     @if ($record->fine > 0)
                                         <span class="badge bg-danger text-white">
-                                            ${{ number_format($record->fine, 2) }}
+                                            UGX {{ number_format($record->fine) }}
                                         </span>
                                     @else
                                         <span class="text-success small fw-semibold">

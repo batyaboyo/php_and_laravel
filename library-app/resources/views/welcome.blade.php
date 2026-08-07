@@ -43,7 +43,7 @@
                             <ul class="list-unstyled mb-0 text-muted small space-y-2">
                                 <li class="mb-2"><strong>• Book Catalog:</strong> Browse, search, filter, and manage books.</li>
                                 <li class="mb-2"><strong>• Circulation:</strong> Borrow and return books with 14-day loan terms.</li>
-                                <li class="mb-2"><strong>• Late Fines:</strong> Automatic fine calculation ($5.00/day late).</li>
+                                <li class="mb-2"><strong>• Late Fines:</strong> Automatic fine calculation (UGX 500/day late).</li>
                                 <li><strong>• Membership:</strong> Track member status, membership numbers, and limits.</li>
                             </ul>
                         </div>

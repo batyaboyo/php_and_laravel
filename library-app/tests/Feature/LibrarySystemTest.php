@@ -4,12 +4,12 @@ use App\Models\Book;
 use App\Models\BorrowRecord;
 use App\Models\User;
 
-it('allows any authenticated user to create, edit, and delete books', function () {
-    $member = User::factory()->create(['role' => 'member']);
+it('allows admin to create, edit, and delete books', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
 
     // Create book
-    $response = $this->actingAs($member)->post('/books', [
-        'title'        => 'New Book by Member',
+    $response = $this->actingAs($admin)->post('/books', [
+        'title'        => 'New Book by Admin',
         'author'       => 'Jane Doe',
         'isbn'         => '978-9999999999',
         'category'     => 'Tech',
@@ -18,7 +18,7 @@ it('allows any authenticated user to create, edit, and delete books', function (
 
     $response->assertRedirect('/books');
     $this->assertDatabaseHas('books', [
-        'title'            => 'New Book by Member',
+        'title'            => 'New Book by Admin',
         'isbn'             => '978-9999999999',
         'total_copies'     => 3,
         'available_copies' => 3,
@@ -27,27 +27,45 @@ it('allows any authenticated user to create, edit, and delete books', function (
     $book = Book::where('isbn', '978-9999999999')->first();
 
     // Access edit page
-    $this->actingAs($member)->get("/books/{$book->id}/edit")->assertOk();
+    $this->actingAs($admin)->get("/books/{$book->id}/edit")->assertOk();
 
     // Update book
-    $updateResponse = $this->actingAs($member)->put("/books/{$book->id}", [
-        'title'        => 'Updated Title by Member',
+    $updateResponse = $this->actingAs($admin)->put("/books/{$book->id}", [
+        'title'        => 'Updated Title by Admin',
         'author'       => 'Jane Doe',
         'isbn'         => '978-9999999999',
         'category'     => 'Tech',
         'total_copies' => 5,
     ]);
     $updateResponse->assertRedirect('/books');
-    expect($book->fresh()->title)->toBe('Updated Title by Member');
+    expect($book->fresh()->title)->toBe('Updated Title by Admin');
 
     // Delete book
-    $deleteResponse = $this->actingAs($member)->delete("/books/{$book->id}");
+    $deleteResponse = $this->actingAs($admin)->delete("/books/{$book->id}");
     $deleteResponse->assertRedirect('/books');
     $this->assertDatabaseMissing('books', ['id' => $book->id]);
 });
 
-it('recalculates available_copies when total_copies is updated', function () {
+it('blocks non-admin members from creating, editing, or deleting books', function () {
     $member = User::factory()->create(['role' => 'member']);
+    $book = Book::create([
+        'title'            => 'Protected Book',
+        'author'           => 'Author',
+        'isbn'             => '978-1111111111',
+        'category'         => 'Fiction',
+        'total_copies'     => 3,
+        'available_copies' => 3,
+    ]);
+
+    $this->actingAs($member)->get('/books/create')->assertForbidden();
+    $this->actingAs($member)->post('/books', ['title' => 'Test', 'author' => 'A', 'isbn' => '978-222', 'total_copies' => 1])->assertForbidden();
+    $this->actingAs($member)->get("/books/{$book->id}/edit")->assertForbidden();
+    $this->actingAs($member)->put("/books/{$book->id}", ['title' => 'T', 'author' => 'A', 'isbn' => '978-1111111111', 'total_copies' => 3])->assertForbidden();
+    $this->actingAs($member)->delete("/books/{$book->id}")->assertForbidden();
+});
+
+it('recalculates available_copies when total_copies is updated by admin', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
     $book = Book::create([
         'title'            => 'Original Book',
         'author'           => 'Author',
@@ -58,7 +76,7 @@ it('recalculates available_copies when total_copies is updated', function () {
     ]);
 
     // Updating total_copies from 3 to 30 with 0 active loans should set available_copies to 30
-    $response = $this->actingAs($member)->put("/books/{$book->id}", [
+    $response = $this->actingAs($admin)->put("/books/{$book->id}", [
         'title'        => 'Original Book',
         'author'       => 'Author',
         'isbn'         => '978-8888888888',

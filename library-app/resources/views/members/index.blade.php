@@ -23,6 +23,7 @@
                         <tr>
                             <th class="ps-4">Name</th>
                             <th>Membership #</th>
+                            <th>Role</th>
                             <th>Status</th>
                             <th>Borrowed / Max Books</th>
                             <th class="text-end pe-4">Actions</th>
@@ -38,6 +39,13 @@
                                     <div class="text-muted small fw-normal">{{ $member->email }}</div>
                                 </td>
                                 <td class="fw-mono text-dark">{{ $member->membership_number ?? 'LIB-' . str_pad($member->id, 4, '0', STR_PAD_LEFT) }}</td>
+                                <td>
+                                    @if ($member->role === 'admin')
+                                        <span class="badge bg-primary text-white px-2 py-1">Admin</span>
+                                    @else
+                                        <span class="badge bg-secondary text-white px-2 py-1">Member</span>
+                                    @endif
+                                </td>
                                 <td>
                                     @if (($member->membership_status ?? 'active') === 'active')
                                         <span class="badge bg-success text-white px-2 py-1">
@@ -75,6 +83,25 @@
                                                 @csrf
                                                 <button type="submit" class="btn btn-sm btn-outline-success">
                                                     Activate
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if ($member->role !== 'admin')
+                                            <form action="{{ route('members.make-admin', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Promote {{ $member->name }} to Admin? They will gain full admin privileges.')">
+                                                @csrf
+                                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                    Make Admin
+                                                </button>
+                                            </form>
+                                        @endif
+
+                                        @if ($member->id !== auth()->id())
+                                            <form action="{{ route('members.destroy', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently remove {{ $member->name }} from the system?')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn btn-sm btn-danger">
+                                                    Delete User
                                                 </button>
                                             </form>
                                         @endif
