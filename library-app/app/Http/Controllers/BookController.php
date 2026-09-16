@@ -37,10 +37,6 @@ class BookController extends Controller
      
     public function create()
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403, 'Only admins can add books.');
-        }
-
         return view('books.create');
     }
 
@@ -48,10 +44,6 @@ class BookController extends Controller
      
     public function store(Request $request)
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403, 'Only admins can add books.');
-        }
-
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
             'author'       => ['required', 'string', 'max:255'],
@@ -83,10 +75,6 @@ class BookController extends Controller
     
     public function edit(Book $book)
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403, 'Only admins can edit books.');
-        }
-
         return view('books.edit', compact('book'));
     }
 
@@ -94,10 +82,6 @@ class BookController extends Controller
      
     public function update(Request $request, Book $book)
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403, 'Only admins can update books.');
-        }
-
         $validated = $request->validate([
             'title'        => ['required', 'string', 'max:255'],
             'author'       => ['required', 'string', 'max:255'],
@@ -127,10 +111,6 @@ class BookController extends Controller
      
     public function destroy(Book $book)
     {
-        if (auth()->user()->role !== 'admin') {
-            abort(403, 'Only admins can delete books.');
-        }
-
         $activeBorrows = $book->borrowRecords()->whereNull('returned_date')->count();
         if ($activeBorrows > 0) {
             return back()->with('error', 'Cannot delete book: This book is currently borrowed by members.');
