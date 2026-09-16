@@ -126,4 +126,18 @@ class BorrowRecordController extends Controller
 
         return view('records.my-books', compact('records'));
     }
+
+    // Show all currently overdue books to administrators.
+    // GET /overdue-books
+    public function overdueBooks()
+    {
+        $records = BorrowRecord::query()
+            ->with(['book', 'user'])
+            ->whereNull('returned_date')
+            ->whereDate('due_date', '<', today())
+            ->orderBy('due_date')
+            ->get();
+
+        return view('records.overdue', compact('records'));
+    }
 }

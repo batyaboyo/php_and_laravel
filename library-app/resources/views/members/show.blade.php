@@ -122,9 +122,9 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if ($record->fine > 0)
+                                    @if ($record->accruedFine() > 0)
                                         <span class="badge bg-danger text-white">
-                                            UGX {{ number_format($record->fine) }}
+                                            UGX {{ number_format($record->accruedFine()) }}
                                         </span>
                                     @else
                                         <span class="text-muted small">UGX 0</span>

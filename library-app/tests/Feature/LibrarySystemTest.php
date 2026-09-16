@@ -207,3 +207,54 @@ it('displays the user\'s active borrow records on /my-books', function () {
     $response->assertOk();
     $response->assertSee('My Borrowed Book');
 });
+
+it('lists only overdue active books for administrators', function () {
+    $admin = User::factory()->create(['role' => 'admin']);
+    $overdueUser = User::factory()->create(['role' => 'member', 'name' => 'Overdue Borrower']);
+    $currentUser = User::factory()->create(['role' => 'member', 'name' => 'Current Borrower']);
+    $overdueBook = Book::create([
+        'title'            => 'Overdue Book',
+        'author'           => 'Author',
+        'isbn'             => '978-6666666666',
+        'category'         => 'Fiction',
+        'total_copies'     => 2,
+        'available_copies' => 0,
+    ]);
+    $currentBook = Book::create([
+        'title'            => 'Current Book',
+        'author'           => 'Author',
+        'isbn'             => '978-6666666667',
+        'category'         => 'Fiction',
+        'total_copies'     => 2,
+        'available_copies' => 0,
+    ]);
+
+    BorrowRecord::create([
+        'book_id'       => $overdueBook->id,
+        'user_id'       => $overdueUser->id,
+        'borrowed_date' => now()->subDays(20)->toDateString(),
+        'due_date'      => now()->subDays(5)->toDateString(),
+    ]);
+    BorrowRecord::create([
+        'book_id'       => $currentBook->id,
+        'user_id'       => $currentUser->id,
+        'borrowed_date' => now()->subDays(2)->toDateString(),
+        'due_date'      => now()->addDays(12)->toDateString(),
+    ]);
+
+    $response = $this->actingAs($admin)->get('/overdue-books');
+
+    $response->assertOk();
+    $response->assertSee('Overdue Book');
+    $response->assertSee('Overdue Borrower');
+    $response->assertSee('5 days');
+    $response->assertSee('UGX 2,500');
+    $response->assertDontSee('Current Book');
+    $response->assertDontSee('Current Borrower');
+});
+
+it('blocks members from viewing the overdue books report', function () {
+    $member = User::factory()->create(['role' => 'member']);
+
+    $this->actingAs($member)->get('/overdue-books')->assertForbidden();
+});

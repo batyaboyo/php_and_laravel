@@ -48,6 +48,12 @@
                                     Members
                                 </a>
                             </li>
+                            <li class="nav-item">
+                                <a class="nav-link {{ request()->routeIs('overdue-books') ? 'active fw-semibold' : '' }}"
+                                    href="{{ route('overdue-books') }}">
+                                    Overdue Books
+                                </a>
+                            </li>
                         @endif
                     </ul>
 

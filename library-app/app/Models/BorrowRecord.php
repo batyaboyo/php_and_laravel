@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class BorrowRecord extends Model
@@ -32,5 +33,19 @@ class BorrowRecord extends Model
     public function user(): \Illuminate\Database\Eloquent\Relations\BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function accruedFine(): int
+    {
+        if ($this->returned_date || ! $this->due_date) {
+            return (int) $this->fine;
+        }
+
+        $dueDate = Carbon::parse($this->due_date)->startOfDay();
+        $today = now()->startOfDay();
+
+        return $today->greaterThan($dueDate)
+            ? $dueDate->diffInDays($today) * 500
+            : 0;
     }
 }

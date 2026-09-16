@@ -74,6 +74,7 @@
                         @foreach ($records as $record)
                             @php
                                 $isOverdue = now()->startOfDay()->greaterThan(\Carbon\Carbon::parse($record->due_date)->startOfDay());
+                                $currentFine = $record->accruedFine();
                             @endphp
                             <tr class="{{ $isOverdue ? 'table-danger-subtle' : '' }}">
                                 <td class="ps-4 fw-semibold text-dark">
@@ -92,9 +93,9 @@
                                     @endif
                                 </td>
                                 <td>
-                                    @if ($record->fine > 0)
+                                    @if ($currentFine > 0)
                                         <span class="badge bg-danger text-white">
-                                            UGX {{ number_format($record->fine) }}
+                                            UGX {{ number_format($currentFine) }}
                                         </span>
                                     @else
                                         <span class="text-success small fw-semibold">

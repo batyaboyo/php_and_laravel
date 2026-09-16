@@ -32,6 +32,7 @@ Route::middleware('auth')->group(function () {
 
 // Admin-only Membership Management routes
 Route::middleware(['auth', 'admin'])->group(function () {
+    Route::get('/overdue-books', [BorrowRecordController::class, 'overdueBooks'])->name('overdue-books');
     Route::get('/members', [MemberController::class, 'index'])->name('members.index');
     Route::get('/members/{member}', [MemberController::class, 'show'])->name('members.show');
     Route::get('/members/{member}/edit', [MemberController::class, 'edit'])->name('members.edit');
