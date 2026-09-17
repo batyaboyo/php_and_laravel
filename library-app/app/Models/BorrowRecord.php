@@ -2,13 +2,10 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class BorrowRecord extends Model
 {
-    protected $table = 'borrow_records';
-
     protected $fillable = [
         'book_id',
         'user_id',
@@ -35,17 +32,23 @@ class BorrowRecord extends Model
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * Calculate the accrued fine for this record.
+     * If already returned, returns the stored fine value.
+     * If still out and overdue, calculates 500 UGX per day late.
+     */
     public function accruedFine(): int
     {
         if ($this->returned_date || ! $this->due_date) {
             return (int) $this->fine;
         }
 
-        $dueDate = Carbon::parse($this->due_date)->startOfDay();
-        $today = now()->startOfDay();
+        // due_date is already a Carbon instance via the 'date' cast.
+        $dueDate = $this->due_date->startOfDay();
+        $today   = now()->startOfDay();
 
         return $today->greaterThan($dueDate)
-            ? $dueDate->diffInDays($today) * 500
+            ? (int) $dueDate->diffInDays($today) * 500
             : 0;
     }
 }

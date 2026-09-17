@@ -55,17 +55,17 @@ class MemberController extends Controller
     }
 
     // Suspend a member.
-    
     public function suspend(User $member)
     {
-        // Check if member has unreturned books with an unpaid fine > 0
-        $hasUnreturnedBookWithFine = $member->borrowRecords()
+        // Prevent suspension if the member has overdue unreturned books.
+        // (Fines are only stored on return; active borrows always have fine = 0.)
+        $hasOverdueBorrows = $member->borrowRecords()
             ->whereNull('returned_date')
-            ->where('fine', '>', 0)
+            ->whereDate('due_date', '<', today())
             ->exists();
 
-        if ($hasUnreturnedBookWithFine) {
-            return back()->with('error', 'Cannot suspend member: Member has unreturned books with unpaid fines.');
+        if ($hasOverdueBorrows) {
+            return back()->with('error', 'Cannot suspend member: Member has overdue books that must be returned first.');
         }
 
         $member->update(['membership_status' => 'suspended']);

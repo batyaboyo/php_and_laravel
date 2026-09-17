@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateBookRequest extends FormRequest
 {
@@ -16,12 +17,12 @@ class UpdateBookRequest extends FormRequest
         $bookId = $this->route('book')?->id;
 
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'isbn' => ['required', 'string', 'unique:books,isbn,' . $bookId],
-            'published_year' => ['required', 'integer'],
-            'available_copies' => ['required', 'integer', 'min:1'],
-            'author_id' => ['required', 'exists:authors,id'],
-            'category_id' => ['required', 'exists:categories,id'],
+            'title'        => ['required', 'string', 'max:255'],
+            'author'       => ['required', 'string', 'max:255'],
+            'isbn'         => ['required', 'string', 'max:255', Rule::unique('books', 'isbn')->ignore($bookId)],
+            'category'     => ['nullable', 'string', 'max:255'],
+            'total_copies' => ['required', 'integer', 'min:1'],
+            'cover_image'  => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ];
     }
 }

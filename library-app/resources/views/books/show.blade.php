@@ -59,11 +59,36 @@
 
                             <div class="d-flex flex-wrap gap-2 align-items-center">
                                 @auth
+                                    @php
+                                        $user = auth()->user();
+                                        $alreadyBorrowed = $user->borrowRecords()
+                                            ->where('book_id', $book->id)
+                                            ->whereNull('returned_date')
+                                            ->exists();
+                                        $isSuspended = $user->membership_status === 'suspended';
+                                        $activeBorrowsCount = $user->borrowRecords()->whereNull('returned_date')->count();
+                                        $isLimitReached = $activeBorrowsCount >= ($user->max_books ?? 3);
+                                    @endphp
+
                                     <form action="{{ route('books.borrow', $book) }}" method="POST" class="d-inline">
                                         @csrf
-                                        <button type="submit" class="btn btn-success" @disabled($book->available_copies < 1)>
-                                            Borrow Book
-                                        </button>
+                                        @if ($alreadyBorrowed)
+                                            <button type="button" class="btn btn-secondary" disabled title="You already have this book borrowed">
+                                                Already Borrowed
+                                            </button>
+                                        @elseif ($isSuspended)
+                                            <button type="button" class="btn btn-secondary" disabled title="Your membership is suspended">
+                                                Membership Suspended
+                                            </button>
+                                        @elseif ($isLimitReached)
+                                            <button type="button" class="btn btn-secondary" disabled title="Borrowing limit reached">
+                                                Limit Reached
+                                            </button>
+                                        @else
+                                            <button type="submit" class="btn btn-success" @disabled($book->available_copies < 1)>
+                                                Borrow Book
+                                            </button>
+                                        @endif
                                     </form>
 
                                     @if(auth()->user()->role === 'admin')

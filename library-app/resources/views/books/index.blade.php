@@ -13,24 +13,14 @@
         @endif
     </div>
 
-    <!-- Member Membership Status Bar -->
+    <!-- Member Status Bar -->
     @auth
-        @php
-            $currentUser = auth()->user();
-            $activeBorrows = $currentUser->borrowRecords()->whereNull('returned_date')->get();
-            $activeBorrowsCount = $activeBorrows->count();
-            $maxBooks = $currentUser->max_books ?? 3;
-            $borrowedBookIds = $activeBorrows->pluck('book_id')->toArray();
-            $isSuspended = $currentUser->membership_status === 'suspended';
-            $isLimitReached = $activeBorrowsCount >= $maxBooks;
-        @endphp
-
         <div class="card border-0 shadow-sm mb-4 bg-white">
             <div class="card-body py-3">
                 <div class="row align-items-center text-center text-md-start g-2">
                     <div class="col-md-3">
                         <span class="text-muted small d-block">Member Number</span>
-                        <span class="fw-bold text-dark">{{ $currentUser->membership_number ?? 'LIB-' . str_pad($currentUser->id, 4, '0', STR_PAD_LEFT) }}</span>
+                        <span class="fw-bold text-dark">{{ auth()->user()->membership_number ?? 'LIB-' . str_pad(auth()->id(), 4, '0', STR_PAD_LEFT) }}</span>
                     </div>
                     <div class="col-md-3">
                         <span class="text-muted small d-block">Membership Status</span>
@@ -56,21 +46,21 @@
         </div>
     @endauth
 
-    <!-- Search & Filter Card -->
+    <!-- Search & Filter -->
     <div class="card border-0 shadow-sm mb-4">
         <div class="card-body">
             <form action="{{ route('books.index') }}" method="GET" class="row g-3 align-items-end">
                 <div class="col-md-5">
-                    <label class="form-label fw-medium text-secondary small mb-1">Search <!--by Title --> /</label>
-                    <input type="text" name="search" class="form-control" placeholder="Type book title..." value="{{ request('search') }}">
+                    <label class="form-label fw-medium text-secondary small mb-1">Search by Title, Author or ISBN</label>
+                    <input type="text" name="search" class="form-control" placeholder="Type book title, author or ISBN..." value="{{ request('search') }}">
                 </div>
-              <!--  <div class="col-md-4">
+                <div class="col-md-4">
                     <label class="form-label fw-medium text-secondary small mb-1">Category</label>
-                    <input type="text" name="category" class="form-control" placeholder="Filter category..." value="{{ request('category') }}">
-                </div> -->
-                <div class="col-md-3 d-flex gap-2"> 
+                    <input type="text" name="category" class="form-control" placeholder="Filter by category..." value="{{ request('category') }}">
+                </div>
+                <div class="col-md-3 d-flex gap-2">
                     <button type="submit" class="btn btn-primary w-100 fw-semibold">
-                        Search <!--Filter -->
+                        Search
                     </button>
                     @if(request()->has('search') || request()->has('category'))
                         <a href="{{ route('books.index') }}" class="btn btn-outline-secondary">
@@ -107,15 +97,15 @@
                     <tbody class="border-top-0">
                         @foreach ($books as $book)
                             @php
-                                $alreadyBorrowed = auth()->check() && in_array($book->id, $borrowedBookIds ?? []);
+                                $alreadyBorrowed = in_array($book->id, $borrowedBookIds);
                             @endphp
                             <tr>
                                 <td class="ps-4 py-2">
                                     @if($book->cover_image)
-                                        <img src="{{ asset('storage/' . $book->cover_image) }}" alt="{{ $book->title }}" 
+                                        <img src="{{ asset('storage/' . $book->cover_image) }}" alt="{{ $book->title }}"
                                              class="rounded border shadow-sm" style="width: 45px; height: 60px; object-fit: cover;">
                                     @else
-                                        <div class="bg-secondary-subtle text-secondary rounded d-flex align-items-center justify-content-center border" 
+                                        <div class="bg-secondary-subtle text-secondary rounded d-flex align-items-center justify-content-center border"
                                              style="width: 45px; height: 60px; font-size: 1.2rem;">
                                             📖
                                         </div>
@@ -156,7 +146,7 @@
                                 <td class="text-end pe-4">
                                     <div class="d-inline-flex gap-1 align-items-center">
                                         @auth
-                                            {{-- View Book Action --}}
+                                            {{-- View Book --}}
                                             <a href="{{ route('books.show', $book) }}" class="btn btn-sm btn-outline-info text-dark">
                                                 View
                                             </a>
@@ -168,31 +158,31 @@
                                                     <button type="button" class="btn btn-sm btn-secondary" disabled title="You already have this book borrowed">
                                                         Borrowed
                                                     </button>
-                                                @elseif ($isSuspended ?? false)
+                                                @elseif ($isSuspended)
                                                     <button type="button" class="btn btn-sm btn-secondary" disabled title="Your membership is suspended">
                                                         Suspended
                                                     </button>
-                                                @elseif ($isLimitReached ?? false)
+                                                @elseif ($isLimitReached)
                                                     <button type="button" class="btn btn-sm btn-secondary" disabled title="Borrowing limit reached">
                                                         Limit Reached
                                                     </button>
                                                 @else
-                                                    <button type="submit" 
-                                                            class="btn btn-sm btn-success" 
+                                                    <button type="submit"
+                                                            class="btn btn-sm btn-success"
                                                             @disabled($book->available_copies < 1)>
                                                         Borrow
                                                     </button>
                                                 @endif
                                             </form>
 
-                                            {{-- Edit Button (Admin only) --}}
+                                            {{-- Admin Controls --}}
                                             @if(auth()->user()->role === 'admin')
                                                 <a href="{{ route('books.edit', $book) }}" class="btn btn-sm btn-outline-warning text-dark">
                                                     Edit
                                                 </a>
 
-                                                {{-- Delete Button --}}
-                                                <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to delete this book?')">
+                                                <form action="{{ route('books.destroy', $book) }}" method="POST" class="d-inline"
+                                                      onsubmit="return confirm('Are you sure you want to delete this book?')">
                                                     @csrf
                                                     @method('DELETE')
                                                     <button type="submit" class="btn btn-sm btn-outline-danger">
@@ -210,7 +200,7 @@
             </div>
         </div>
 
-        <!-- Bootstrap 5 Pagination -->
+        <!-- Pagination -->
         <div class="d-flex justify-content-center">
             {{ $books->links('pagination::bootstrap-5') }}
         </div>

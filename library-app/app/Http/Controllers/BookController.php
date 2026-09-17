@@ -2,15 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\StoreBookRequest;
+use App\Http\Requests\UpdateBookRequest;
 use App\Models\Book;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class BookController extends Controller
 {
     // Display a paginated list of books.
-    
     public function index(Request $request)
     {
         $query = Book::query();
@@ -30,28 +31,43 @@ class BookController extends Controller
 
         $books = $query->latest()->paginate(10);
 
-        return view('books.index', compact('books'));
+        // Resolve current user's active borrows once, pass to view to avoid N+1 in the template.
+        $borrowedBookIds = [];
+        $activeBorrowsCount = 0;
+        $maxBooks = 3;
+        $isSuspended = false;
+        $isLimitReached = false;
+
+        if (Auth::check()) {
+            $user = Auth::user();
+            $activeBorrows = $user->borrowRecords()->whereNull('returned_date')->get();
+            $activeBorrowsCount = $activeBorrows->count();
+            $maxBooks = $user->max_books ?? 3;
+            $borrowedBookIds = $activeBorrows->pluck('book_id')->toArray();
+            $isSuspended = $user->membership_status === 'suspended';
+            $isLimitReached = $activeBorrowsCount >= $maxBooks;
+        }
+
+        return view('books.index', compact(
+            'books',
+            'borrowedBookIds',
+            'activeBorrowsCount',
+            'maxBooks',
+            'isSuspended',
+            'isLimitReached'
+        ));
     }
 
     // Show the form for creating a new book.
-     
     public function create()
     {
         return view('books.create');
     }
 
     // Store a newly created book in storage.
-     
-    public function store(Request $request)
+    public function store(StoreBookRequest $request)
     {
-        $validated = $request->validate([
-            'title'        => ['required', 'string', 'max:255'],
-            'author'       => ['required', 'string', 'max:255'],
-            'isbn'         => ['required', 'string', 'max:255', 'unique:books,isbn'],
-            'category'     => ['nullable', 'string', 'max:255'],
-            'total_copies' => ['required', 'integer', 'min:1'],
-            'cover_image'  => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
-        ]);
+        $validated = $request->validated();
 
         if ($request->hasFile('cover_image')) {
             $validated['cover_image'] = $request->file('cover_image')->store('covers', 'public');
@@ -65,31 +81,21 @@ class BookController extends Controller
     }
 
     // Display details of the specified book.
-    
     public function show(Book $book)
     {
         return view('books.show', compact('book'));
     }
 
     // Show the form for editing the specified book.
-    
     public function edit(Book $book)
     {
         return view('books.edit', compact('book'));
     }
 
     // Update the specified book in storage.
-     
-    public function update(Request $request, Book $book)
+    public function update(UpdateBookRequest $request, Book $book)
     {
-        $validated = $request->validate([
-            'title'        => ['required', 'string', 'max:255'],
-            'author'       => ['required', 'string', 'max:255'],
-            'isbn'         => ['required', 'string', 'max:255', Rule::unique('books', 'isbn')->ignore($book->id)],
-            'category'     => ['nullable', 'string', 'max:255'],
-            'total_copies' => ['required', 'integer', 'min:1'],
-            'cover_image'  => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
-        ]);
+        $validated = $request->validated();
 
         if ($request->hasFile('cover_image')) {
             if ($book->cover_image) {
@@ -98,7 +104,7 @@ class BookController extends Controller
             $validated['cover_image'] = $request->file('cover_image')->store('covers', 'public');
         }
 
-        // Recalculate available copies based on currently active (unreturned) loans
+        // Recalculate available copies based on currently active (unreturned) loans.
         $activeLoansCount = $book->borrowRecords()->whereNull('returned_date')->count();
         $validated['available_copies'] = max(0, $validated['total_copies'] - $activeLoansCount);
 
@@ -108,7 +114,6 @@ class BookController extends Controller
     }
 
     // Remove the specified book from storage.
-     
     public function destroy(Book $book)
     {
         $activeBorrows = $book->borrowRecords()->whereNull('returned_date')->count();

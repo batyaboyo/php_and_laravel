@@ -36,20 +36,24 @@
                         </form>
                     @endif
 
-                    <form action="{{ route('members.make-admin', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Promote {{ $member->name }} to Admin? They will gain full admin privileges.')">
-                        @csrf
-                        <button type="submit" class="btn btn-outline-primary btn-sm">
-                            Make Admin
-                        </button>
-                    </form>
+                    @if ($member->role !== 'admin')
+                        <form action="{{ route('members.make-admin', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Promote {{ $member->name }} to Admin? They will gain full admin privileges.')">
+                            @csrf
+                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                                Make Admin
+                            </button>
+                        </form>
+                    @endif
 
-                    <form action="{{ route('members.destroy', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently remove {{ $member->name }} from the system?')">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn btn-danger btn-sm">
-                            Delete User
-                        </button>
-                    </form>
+                    @if ($member->id !== auth()->id())
+                        <form action="{{ route('members.destroy', $member) }}" method="POST" class="d-inline" onsubmit="return confirm('Are you sure you want to permanently remove {{ $member->name }} from the system?')">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit" class="btn btn-danger btn-sm">
+                                Delete User
+                            </button>
+                        </form>
+                    @endif
                 </div>
             </div>
 

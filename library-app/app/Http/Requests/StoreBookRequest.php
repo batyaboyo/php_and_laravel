@@ -14,12 +14,12 @@ class StoreBookRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'title' => ['required', 'string', 'max:255'],
-            'isbn' => ['required', 'string', 'unique:books'],
-            'published_year' => ['required', 'integer'],
-            'available_copies' => ['required', 'integer', 'min:1'],
-            'author_id' => ['required', 'exists:authors,id'],
-            'category_id' => ['required', 'exists:categories,id'],
+            'title'        => ['required', 'string', 'max:255'],
+            'author'       => ['required', 'string', 'max:255'],
+            'isbn'         => ['required', 'string', 'max:255', 'unique:books,isbn'],
+            'category'     => ['nullable', 'string', 'max:255'],
+            'total_copies' => ['required', 'integer', 'min:1'],
+            'cover_image'  => ['nullable', 'image', 'mimes:jpeg,png,jpg,gif,svg', 'max:2048'],
         ];
     }
 }
