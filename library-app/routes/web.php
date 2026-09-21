@@ -14,7 +14,6 @@ Route::get('/', function () {
 // All book and borrowing actions are enabled for any logged-in user
 Route::middleware('auth')->group(function () {
     Route::get('/books', [BookController::class, 'index'])->name('books.index');
-    Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
     Route::post('/books/{book}/borrow', [BorrowRecordController::class, 'store'])->name('books.borrow');
     Route::post('/borrow-records/{record}/return', [BorrowRecordController::class, 'returnBook'])->name('borrow-records.return');
     Route::get('/my-books', [BorrowRecordController::class, 'myBooks'])->name('my-books');
@@ -40,6 +39,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::post('/members/{member}/activate', [MemberController::class, 'activate'])->name('members.activate');
     Route::post('/members/{member}/make-admin', [MemberController::class, 'makeAdmin'])->name('members.make-admin');
     Route::delete('/members/{member}', [MemberController::class, 'destroy'])->name('members.destroy');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
 });
 
 require __DIR__ . '/auth.php';
