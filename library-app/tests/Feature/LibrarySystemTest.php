@@ -5,6 +5,8 @@ use App\Models\BorrowRecord;
 use App\Models\User;
 
 it('allows admin to create, edit, and delete books', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $admin */
     $admin = User::factory()->create(['role' => 'admin']);
 
     // Create book
@@ -24,7 +26,7 @@ it('allows admin to create, edit, and delete books', function () {
         'available_copies' => 3,
     ]);
 
-    $book = Book::where('isbn', '978-9999999999')->first();
+    $book = Book::query()->where('isbn', '978-9999999999')->first();
 
     // Access edit page
     $this->actingAs($admin)->get("/books/{$book->id}/edit")->assertOk();
@@ -47,6 +49,8 @@ it('allows admin to create, edit, and delete books', function () {
 });
 
 it('blocks non-admin members from creating, editing, or deleting books', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $member */
     $member = User::factory()->create(['role' => 'member']);
     $book = Book::create([
         'title'            => 'Protected Book',
@@ -65,6 +69,8 @@ it('blocks non-admin members from creating, editing, or deleting books', functio
 });
 
 it('recalculates available_copies when total_copies is updated by admin', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $admin */
     $admin = User::factory()->create(['role' => 'admin']);
     $book = Book::create([
         'title'            => 'Original Book',
@@ -91,11 +97,14 @@ it('recalculates available_copies when total_copies is updated by admin', functi
 });
 
 it('blocks unauthenticated guests from book CRUD actions', function () {
+    /** @var \Tests\TestCase $this */
     $this->get('/books/create')->assertRedirect('/login');
     $this->post('/books', ['title' => 'Test'])->assertRedirect('/login');
 });
 
 it('blocks borrowing when no copies are available', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $user */
     $user = User::factory()->create(['role' => 'member']);
     $book = Book::create([
         'title'            => 'Unavailable Book',
@@ -113,6 +122,8 @@ it('blocks borrowing when no copies are available', function () {
 });
 
 it('allows borrowing when copies are available', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $user */
     $user = User::factory()->create(['role' => 'member']);
     $book = Book::create([
         'title'            => 'Available Book',
@@ -134,6 +145,8 @@ it('allows borrowing when copies are available', function () {
 });
 
 it('calculates fine at 500 per day when returning a late borrow record', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $user */
     $user = User::factory()->create(['role' => 'member']);
     $book = Book::create([
         'title'            => 'Late Book',
@@ -163,7 +176,10 @@ it('calculates fine at 500 per day when returning a late borrow record', functio
 });
 
 it('prevents a member from returning another member\'s borrow record', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $owner */
     $owner = User::factory()->create(['role' => 'member']);
+    /** @var User $other */
     $other = User::factory()->create(['role' => 'member']);
     $book  = Book::create([
         'title'            => 'Protected Book',
@@ -186,6 +202,8 @@ it('prevents a member from returning another member\'s borrow record', function 
 });
 
 it('displays the user\'s active borrow records on /my-books', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $user */
     $user  = User::factory()->create(['role' => 'member']);
     $book  = Book::create([
         'title'            => 'My Borrowed Book',
@@ -209,8 +227,12 @@ it('displays the user\'s active borrow records on /my-books', function () {
 });
 
 it('lists only overdue active books for administrators', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $admin */
     $admin = User::factory()->create(['role' => 'admin']);
+    /** @var User $overdueUser */
     $overdueUser = User::factory()->create(['role' => 'member', 'name' => 'Overdue Borrower']);
+    /** @var User $currentUser */
     $currentUser = User::factory()->create(['role' => 'member', 'name' => 'Current Borrower']);
     $overdueBook = Book::create([
         'title'            => 'Overdue Book',
@@ -254,6 +276,8 @@ it('lists only overdue active books for administrators', function () {
 });
 
 it('blocks members from viewing the overdue books report', function () {
+    /** @var \Tests\TestCase $this */
+    /** @var User $member */
     $member = User::factory()->create(['role' => 'member']);
 
     $this->actingAs($member)->get('/overdue-books')->assertForbidden();

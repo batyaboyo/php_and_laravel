@@ -14,6 +14,7 @@ Route::get('/', function () {
 // All book and borrowing actions are enabled for any logged-in user
 Route::middleware('auth')->group(function () {
     Route::get('/books', [BookController::class, 'index'])->name('books.index');
+    Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
     Route::post('/books/{book}/borrow', [BorrowRecordController::class, 'store'])->name('books.borrow');
     Route::post('/borrow-records/{record}/return', [BorrowRecordController::class, 'returnBook'])->name('borrow-records.return');
     Route::get('/my-books', [BorrowRecordController::class, 'myBooks'])->name('my-books');
